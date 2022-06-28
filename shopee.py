@@ -55,16 +55,17 @@ def get_stock(soup):
     return {"source": str(tag), "value": values}
 
 def get_description(soup):
-    tag = ""
+    tags = ""
     value = ""
     try:
-        tag = soup.select_one('p.hrQhmh')
-        value = tag.text
+        tags = soup.select('p.hrQhmh')
+        for paragraphs in tags:
+            value += paragraphs.text
 
     except Exception as e:
         print("get_description() Error:" + str(e))
 
-    return {"source": str(tag), "value": value}
+    return {"source": str(tags), "value": value}
 
 def get_specifications(soup):
     tag = ""
@@ -108,21 +109,26 @@ def get_brand(soup):
     
     return {"source": str(tag), "value": value}
 
-def get_vid_urls(soup):
+def get_vid_urls():
     tags = ""
     value = []
-    has_src = False
 
     try:
-        tags = soup.select('video')
+        thumbnails = chrome_driver.find_elements(By.CLASS_NAME, '-EByYP')
+        for thumbnail in thumbnails:
+            thumbnail_click = ActionChains(chrome_driver).click(thumbnail)
+            thumbnail_click.perform()
+        
+        html = chrome_driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
+        new_soup = BeautifulSoup(html, "lxml")
 
-        if tags:
-            for videos in tags:
+        video_tags = new_soup.select('video')
+
+        if video_tags:
+            for videos in video_tags:
                 if videos.has_attr('src'):
+                    tags = video_tags
                     value.append(videos['src'])
-                    has_src = True
-
-        if not has_src: tags = ""
 
     except Exception as e:
         print("get_vid_urls() error: " + str(e))
@@ -150,15 +156,6 @@ def get_imgs_urls():
             background_image = style.split(';')[0]
             url = background_image.split(':')[2]
             value.append('https:' + url[:-5])
-
-        # tags = soup.select('div.agPpyA._8akja2')
-
-        # for thumbnail in tags:
-        #     print(thumbnail)
-        #     style = thumbnail['style']
-        #     background_image = style.split(';')[0]
-        #     url = background_image.split(':')[2]
-        #     value.append('https:' + url[:-5])
 
     except Exception as e:
         print("get_video_urls() error: " + str(e))
@@ -239,7 +236,7 @@ if __name__ == "__main__":
         data['delivery'] = get_delivery()
         data['shipping'] = get_shipping()
         data['img_urls'] = get_imgs_urls()
-        data['vid_urls'] = get_vid_urls(soup)
+        data['vid_urls'] = get_vid_urls()
 
         with open('shopee_scrape_result.json', 'w', encoding="utf8") as json_file:
             result = json.dumps(data, indent=4, ensure_ascii=False)
@@ -250,9 +247,7 @@ if __name__ == "__main__":
         print("Timeout!")
     
     end_time = time.time()
-
     exec_time = end_time - start_time
-
     print(exec_time)
     
 
